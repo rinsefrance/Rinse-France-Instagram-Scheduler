@@ -18,7 +18,15 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
+# Load credentials from Streamlit Secrets (Cloud) or local file (Local fallback)
+if "gcp_service_account" in st.secrets:
+    creds = Credentials.from_service_account_info(
+        st.secrets["gcp_service_account"], scopes=SCOPES
+    )
+elif os.path.exists("credentials.json"):
+    creds = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
+else:
+    st.error("Missing Google Credentials!")
 
 def get_sheet_data(sheet_url, row_number):
     try:
@@ -49,15 +57,12 @@ def download_drive_video(file_id, output_filename):
 def process_video(input_filename, output_filename, crop):
     try:
         input_stream = ffmpeg.input(input_filename)
-        
-        # Extrait la vidéo et l'audio séparément
         video = input_stream.video
         audio = input_stream.audio
         
         if crop:
             video = ffmpeg.filter(video, 'crop', 'ih*4/5', 'ih')
             
-        # Combine la vidéo et l'audio avec encodage AAC stéréo
         output = ffmpeg.output(
             video, 
             audio, 
