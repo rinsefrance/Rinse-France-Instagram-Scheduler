@@ -6,7 +6,7 @@ import requests
 import ffmpeg
 import os
 import time
-import base64
+import json
 import cloudinary
 import cloudinary.uploader
 
@@ -27,11 +27,9 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-if "gcp_service_account" in st.secrets:
-    gcp_dict = dict(st.secrets["gcp_service_account"])
-    if "private_key_b64" in gcp_dict:
-        gcp_dict["private_key"] = base64.b64decode(gcp_dict["private_key_b64"]).decode('utf-8')
-    creds = Credentials.from_service_account_info(gcp_dict, scopes=SCOPES)
+if "GCP_JSON_STR" in st.secrets:
+    gcp_info = json.loads(st.secrets["GCP_JSON_STR"])
+    creds = Credentials.from_service_account_info(gcp_info, scopes=SCOPES)
 elif os.path.exists("credentials.json"):
     creds = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
 else:
