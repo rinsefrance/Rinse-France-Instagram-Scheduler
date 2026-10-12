@@ -6,7 +6,6 @@ import requests
 import ffmpeg
 import os
 import time
-import json
 import cloudinary
 import cloudinary.uploader
 
@@ -27,15 +26,11 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-if "GCP_JSON_STR" in st.secrets:
-    gcp_info = json.loads(st.secrets["GCP_JSON_STR"])
-    if "private_key" in gcp_info:
-        gcp_info["private_key"] = gcp_info["private_key"].replace("\\n", "\n")
-    creds = Credentials.from_service_account_info(gcp_info, scopes=SCOPES)
-elif os.path.exists("credentials.json"):
+# Read credentials directly from the repository file
+if os.path.exists("credentials.json"):
     creds = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
 else:
-    st.error("Missing Google Credentials!")
+    st.error("Missing credentials.json file!")
 
 def get_sheet_data(sheet_url, row_number):
     try:
