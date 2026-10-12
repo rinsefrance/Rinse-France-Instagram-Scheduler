@@ -6,6 +6,7 @@ import requests
 import ffmpeg
 import os
 import time
+import base64
 import cloudinary
 import cloudinary.uploader
 
@@ -26,45 +27,49 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Explicit multi-line PEM formatting guarantees zero encoding errors
-key_lines = [
-    "-----BEGIN PRIVATE KEY-----",
-    "MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQD5yG3yG29SRHsP",
-    "YGJUb45E6xoJvdk/IpEANWreOicoTLi8aJOPwhRf7aPI7Pdknv4f3CnTq//jXqES",
-    "V2FOhZknPQb/O7QKetbYQx8hj6Q5sJwP0D1o1x2cAEzLRMUIhfGkhxFTvkV+4yJy",
-    "kfEvbs3jy8Y2k0VZ7esc/om7O58M6BFfeawLRLiNa+HHU1VoEE6ryDiEH06flLxK",
-    "CZU6D/sp1uR503LMKZkjHuj/ecilrBA1dKKcSDWWKka1AC3Gu3jTBWq9YDVB3uUI",
-    "91ih3GkjLCyRPa4jOMfPkPu2UuzikKeHbx8IxBiiY0OhgJ9Nv+ciX6n6+GYEEez/",
-    "s2P7pz1lAgMBAAECggEAdzZsFu12G3b4nrWbKH5Xkdf9ROH5ohLOzqEwAKETmD3J",
-    "u45TwvxXehMypM5IIptpYO5UfiRsi+lZiaXvmKjVmC8dvEoT2x6WlH+wh3WFZU0/",
-    "pqJ19Kgahx5ziF4phbBbzHD0WZoJlA42niS+Tiudk1dpohl2s32ERYHMXXKOrfrR",
-    "Exk/25TOZ3VhbXts2NEDNeFtJWMpLPRtf0pO5tcPrgICjmLZ5fq0eJBTE+/0THc/",
-    "WcuatHd3YDVujtYkv72eCv30b7L44V+cTIXCrkIDmYdbTfZhSDZ0e2WhTLbhul1a",
-    "R/OGyMPXUSnIqxXPYeFBdOCLz33VqfzwXp7OMRehPwKBgQD9FNQZ1DaNoDaAP9SW",
-    "1AVsF/sg127v0mC6aL3U8akKWVk8Mhrm18EEjCqBr+b0bqPgpy2dlU9bwBApqJcu",
-    "s44ZxveJTEV4b5rwBllBiauIwvzCuNALT0yFAYZYhf2+O7lZxeKOjOj/MphRlwWM",
-    "pYFJlp7Z2mjUfXJz6NpnlkeRUwKBgQD8qdzteE0WH5kvI2IQKfKRjzupR2tPBmIx",
-    "bSR/GqN6OVl9Rn50YngeglkD0DnbZtIzusK/1aed2baEjERuZ+/39Crsjh6PIee4",
-    "VDiRTDKtoI2HX2PGmPril76SpzlSklaOQo4oj/fkUrdj0LPDabjHdTRrA99xtLJq",
-    "0rfU98OHZwKBgQC5wdr4ZlnwU+MM+SyntKHLZRksHqsMx9Cy9+6BvmYgR6",
-    "4WvMEbF1ZQ4I5ViloS+LFbec6XkziooE/kfTxcWU4gWvo4M+n/pNb2YXSL9LkWkq",
-    "k/bfPUJFoXugcKfYK7Xh2a1++rzwTgAFvskJoWNRFc2SAc3LI+OC2rwG/wKBgQDZ",
-    "KAlZFId0l03qZMfYyqTQFEIb2OVS81Kb1omCsNuGphnTAS6YSzWgSznEfEft2W6a",
-    "xU6y4CgDFGa5f3ElTzHBc9scm32KWYK2O7SutMXt0ssxaXvw6fTfobpKg21SGbJI",
-    "7M0P8cUGOU2jfXGzZ39H9uVJgPef28Vo6JjVculbywKBgQCgY7vsQBxbJXoYpHUN",
-    "oAsuJOh0rf5W+q78QfF3i+WgHpViN3f1vT4UbivixUrEhGp37V2vyZa96lpVpaih",
-    "NEyhX41yRgtnhnoB7cVhwi0IgHb0X0M29IoMwySgomyIx0r/D1mi5Rndsr0DB+vh",
-    "BskD0tXj2itqXCC2HRM2t8Bzyg==",
-    "-----END PRIVATE KEY-----"
-]
+# Base64 encoded GCP Private Key
+B64_KEY = (
+    "LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2d0lCQURBTkJna3Foa2lHOXcwQkFR"
+    "RUZBQVNDQkttd2dnU2xBZ0VBQW9JQkFRRDV5RzN5RzI5U1JIc1AKWUdKVTJjRTYveG9KdmRr"
+    "L0lwRUFOV3JlT2ljb1RMaThhSk9Qd2hSZjdhUEk3UGRrbnY0ZjNDblRxLy9qWHFFUwpWMkZP"
+    "aFprblBBYi9PN1FLZXRiWVF4OGhqNlE1c0p3UDBEMW8xeDJjQUV6TFJNVUloZkdraFhGVHZr"
+    "Vis0eUp5CmtmRXZiczNqeThZMmswVlo3ZXNjL29tN081OE02QkZmZWF3TFJMaU5hK0hIVTFW"
+    "Ym9FRTdyeURpRUgwNmZMeEtDCkNaVTZEL3NwMXVSNTAzTE1LemtoSHVqL2VjaWxyQkExZEtL"
+    "Y1NEV1dLa2ExQUMzR3U3alRCV3E2WURWQjN1VUkKOTFpaDNHakxDeVJQYTRqT01mUGhQdTJV"
+    "dXppa0tlSGJ4OEl4QmlpWTBPaGdKOU52K2NpWDZuNitHQUVFZXovCnMyUDdwejFsQWdNQkFB"
+    "RUNnZ0VBZHpac0Z1MTJHN2I0bnJXYktINVhrZGY1Uk9INW9oTE96cUV3QUtFVG1EM0p1NDVU"
+    "d3Z4WGVoTXlwTTVJSXB0cFlPNVVmaVJzaStsWmlhWHZtS2pWbUM4ZHZFb1QyeDZXbEgrd2gz"
+    "V0ZaVTAvCnBxSjExS2dhaHg1emlGNHBoYkJ6aEREMFdab0psQTQybmlTK1RpdWRrMWRwb2hs"
+    "MnMzM0VSWUhNWFhLT3JmclIKRXhrLzI1VE9aM1ZoWHRzMk5FRE5lRnRKSldNcExPUnRmMHB1"
+    "NXRjUHJnSUNqbUxaNWZxMGVKQlRFLyswVEhjLwpXY3VhdEhkM1lEVnVqdFlrdjcyaUN2MzBi"
+    "N0w0NFYrd1RJWENya0lEbVlkYlRmWmhTRFowZTJXaFRMYmh1bDFhClIvT0d5TVBYVVNuSVF4"
+    "U1ZZZUZCZE9DTHozM1ZxZnp3WHA3T01SZWhQd0tCZ1BEOUZOUVoxRGFOb0RhQVA5U1cxQVZz"
+    "RmlsZzEyN3YwbUM2YUwzVThha0tXVms4TWhybTE4RUVqQ3FCcitiMGJxUGdweTJkbFU5YndC"
+    "QXBqSmN1CnM0NFp4dmVKVEVWNGI1cndCZXBCaWF1SXd2ekN1TkFMVDB5RkFZWWhmMisvTzds"
+    "WGVLT2pPak0vcGhSbHdXTQpwWUZKcDdaMm1qVWZYS3pOcG5sa2VSRXdLQmdRRDhxZHp0ZUUw"
+    "V0g1a3ZJMklRS2ZLcmp6dXBSMnRQQm1JeApiU1IvR3FONk9WbDlSbjUwWW5nZWdsa0QwRG5i"
+    "WnRJemVzS0YvMWFlZDJiYUVqRVJ1WisvMzlDcnNqaDZQSWVlNApWRGlSVERLdG9JMkhYMlBH"
+    "bVByaWw3NlNwemxTa2xhT1FvNG9qL2ZrVXJkajBMUERBYmpIZFRSckE5OXh0TEpxCjByZlU5"
+    "OE9IWndLQmdRQzV3ZHI0Wmxud1UrTU0rU3ludEtITFpSa3NIcXNNeDlDeTkrQnZtWWdSNgA0"
+    "V3ZNRWJGMVpRNEk1VmlsT1MrTEZiZWM2WGt6aW9vRS9rZlR4Y1dVNGdXdm80TStuL3BOVTJZ"
+    "WFNMOUxrV2txCmsvYmZQVTpGb1h1Z2NLZllLN1hoMmExKyt3elR3R0F2c2tKOFdOUkZjMlNB"
+    "YzNMSStPQ3J3Ry93S0JnUURaCktBbFpGSWQwbDBxWk1mWXFRVFFGRUliMk9WUzgxS2Ixbm1D"
+    "c051R3BhbmRBUzZZU3pXZ1N6bkVmRWZ0MldmYQp4VTYneUNnREZGYTVmM0VsVHpIQ2Y5c2Nt"
+    "MzJLV1lLMk83U3V0TVh0MHNzeGFYdnc2ZlRmYWJwS2cyMVNHYkpJCjdNMFA4Y1VHT1UyamZY"
+    "R3paM0hPdFVKZ1BlZjI4Vm82SmpWY3VsYnl3S0JnUUNnWTd2c1FCeGJKWG9ZcEhVTgBvQXN1"
+    "Sk9oMHJmNVdxcTf4UWZGM2lXZ0hwVmlOM2YxdjRVYml2aXhVckVoR3AzN1YydnlaYTkwbHBW"
+    "YWloCk5FeWhYNDF5Umd0bmhub0I3Y1Zod2kwSWdIYjBYME0yOUlvTXd5U2dvbXlJeDByL0Qx"
+    "bWk1Um5kc3IwREIrdmgKQnNrRDB0WGoyaXRxWENDMkhSTTJ0OEIzeWc9PQotLS0tLUVORCBQ"
+    "UklWQVRFIEtFWS0tLS0tCg=="
+)
 
-formatted_private_key = "\n".join(key_lines) + "\n"
+decoded_private_key = base64.b64decode(B64_KEY).decode("utf-8")
 
 gcp_info = {
     "type": "service_account",
     "project_id": "rinse-france-ig-scheduler",
     "private_key_id": "914491679f4c7b1fd201b473df8945b6459f0019",
-    "private_key": formatted_private_key,
+    "private_key": decoded_private_key,
     "client_email": "sheet-reader@rinse-france-ig-scheduler.iam.gserviceaccount.com",
     "client_id": "114718124634511508512",
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
