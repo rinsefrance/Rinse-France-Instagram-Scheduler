@@ -6,8 +6,6 @@ import requests
 import ffmpeg
 import os
 import time
-import json
-import base64
 import cloudinary
 import cloudinary.uploader
 
@@ -28,16 +26,14 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Load credentials safely from base64 secret
-if "GCP_JSON_B64" in st.secrets:
-    clean_b64 = st.secrets["GCP_JSON_B64"].replace("\n", "").replace("\r", "").replace(" ", "").strip()
-    json_bytes = base64.b64decode(clean_b64)
-    gcp_info = json.loads(json_bytes.decode("utf-8"))
-    if "private_key" in gcp_info:
-        gcp_info["private_key"] = gcp_info["private_key"].replace("\\n", "\n")
-    creds = Credentials.from_service_account_info(gcp_info, scopes=SCOPES)
+# Load credentials directly from [gcp_service_account] in Streamlit Secrets
+if "gcp_service_account" in st.secrets:
+    gcp_dict = dict(st.secrets["gcp_service_account"])
+    if "private_key" in gcp_dict:
+        gcp_dict["private_key"] = gcp_dict["private_key"].replace("\\n", "\n")
+    creds = Credentials.from_service_account_info(gcp_dict, scopes=SCOPES)
 else:
-    st.error("Missing GCP_JSON_B64 in Streamlit Secrets!")
+    st.error("Missing [gcp_service_account] in Streamlit Secrets!")
 
 def get_sheet_data(sheet_url, row_number):
     try:
