@@ -6,6 +6,7 @@ import requests
 import ffmpeg
 import os
 import time
+import base64
 import cloudinary
 import cloudinary.uploader
 
@@ -28,8 +29,8 @@ SCOPES = [
 
 if "gcp_service_account" in st.secrets:
     gcp_dict = dict(st.secrets["gcp_service_account"])
-    if "private_key" in gcp_dict and "\\n" in gcp_dict["private_key"]:
-        gcp_dict["private_key"] = gcp_dict["private_key"].replace("\\n", "\n")
+    if "private_key_b64" in gcp_dict:
+        gcp_dict["private_key"] = base64.b64decode(gcp_dict["private_key_b64"]).decode('utf-8')
     creds = Credentials.from_service_account_info(gcp_dict, scopes=SCOPES)
 elif os.path.exists("credentials.json"):
     creds = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
