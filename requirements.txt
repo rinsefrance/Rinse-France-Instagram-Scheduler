@@ -2,4 +2,4 @@ streamlit
 gspread
 google-auth
 requests
-ffmpeg-python
+ffmpeg-pythoncloudinary
