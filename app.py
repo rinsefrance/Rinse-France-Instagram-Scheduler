@@ -29,6 +29,8 @@ SCOPES = [
 
 if "GCP_JSON_STR" in st.secrets:
     gcp_info = json.loads(st.secrets["GCP_JSON_STR"])
+    if "private_key" in gcp_info:
+        gcp_info["private_key"] = gcp_info["private_key"].replace("\\n", "\n")
     creds = Credentials.from_service_account_info(gcp_info, scopes=SCOPES)
 elif os.path.exists("credentials.json"):
     creds = Credentials.from_service_account_file("credentials.json", scopes=SCOPES)
