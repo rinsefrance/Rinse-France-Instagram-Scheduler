@@ -6,7 +6,6 @@ import requests
 import ffmpeg
 import os
 import time
-import re
 import cloudinary
 import cloudinary.uploader
 
@@ -27,41 +26,45 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Raw service account credentials
-RAW_PRIVATE_KEY = """-----BEGIN PRIVATE KEY-----
-MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQD5yG3yG29SRHsP
-YGJUb45E6xoJvdk/IpEANWreOicoTLi8aJOPwhRf7aPI7Pdknv4f3CnTq//jXqES
-V2FOhZknPQb/O7QKetbYQx8hj6Q5sJwP0D1o1x2cAEzLRMUIhfGkhxFTvkV+4yJy
-kfEvbs3jy8Y2k0VZ7esc/om7O58M6BFfeawLRLiNa+HHU1VoEE6ryDiEH06flLxK
-CZU6D/sp1uR503LMKZkjHuj/ecilrBA1dKKcSDWWKka1AC3Gu3jTBWq9YDVB3uUI
-91ih3GkjLCyRPa4jOMfPkPu2UuzikKeHbx8IxBiiY0OhgJ9Nv+ciX6n6+GYEEez/
-s2P7pz1lAgMBAAECggEAdzZsFu12G3b4nrWbKH5Xkdf9ROH5ohLOzqEwAKETmD3J
-u45TwvxXehMypM5IIptpYO5UfiRsi+lZiaXvmKjVmC8dvEoT2x6WlH+wh3WFZU0/
-pqJ19Kgahx5ziF4phbBbzHD0WZoJlA42niS+Tiudk1dpohl2s32ERYHMXXKOrfrR
-Exk/25TOZ3VhbXts2NEDNeFtJWMpLPRtf0pO5tcPrgICjmLZ5fq0eJBTE+/0THc/
-WcuatHd3YDVujtYkv72eCv30b7L44V+cTIXCrkIDmYdbTfZhSDZ0e2WhTLbhul1a
-R/OGyMPXUSnIqxXPYeFBdOCLz33VqfzwXp7OMRehPwKBgQD9FNQZ1DaNoDaAP9SW
-1AVsF/sg127v0mC6aL3U8akKWVk8Mhrm18EEjCqBr+b0bqPgpy2dlU9bwBApqJcu
-s44ZxveJTEV4b5rwBllBiauIwvzCuNALT0yFAYZYhf2+O7lZxeKOjOj/MphRlwWM
-pYFJlp7Z2mjUfXJz6NpnlkeRUwKBgQD8qdzteE0WH5kvI2IQKfKRjzupR2tPBmIx
-bSR/GqN6OVl9Rn50YngeglkD0DnbZtIzusK/1aed2baEjERuZ+/39Crsjh6PIee4
-VDiRTDKtoI2HX2PGmPril76SpzlSklaOQo4oj/fkUrdj0LPDabjHdTRrA99xtLJq
-0rfU98OHZwKBgQC5wdr4ZlnwU+MM+SyntKHLZRksHqsMx9Cy9+6BvmYgR6
-4WvMEbF1ZQ4I5ViloS+LFbec6XkziooE/kfTxcWU4gWvo4M+n/pNb2YXSL9LkWkq
-k/bfPUJFoXugcKfYK7Xh2a1++rzwTgAFvskJoWNRFc2SAc3LI+OC2rwG/wKBgQDZ
-KAlZFId0l03qZMfYyqTQFEIb2OVS81Kb1omCsNuGphnTAS6YSzWgSznEfEft2W6a
-xU6y4CgDFGa5f3ElTzHBc9scm32KWYK2O7SutMXt0ssxaXvw6fTfobpKg21SGbJI
-7M0P8cUGOU2jfXGzZ39H9uVJgPef28Vo6JjVculbywKBgQCgY7vsQBxbJXoYpHUN
-oAsuJOh0rf5W+q78QfF3i+WgHpViN3f1vT4UbivixUrEhGp37V2vyZa96lpVpaih
-NEyhX41yRgtnhnoB7cVhwi0IgHb0X0M29IoMwySgomyIx0r/D1mi5Rndsr0DB+vh
-BskD0tXj2itqXCC2HRM2t8Bzyg==
------END PRIVATE KEY-----"""
+# Explicit multi-line PEM formatting guarantees zero encoding errors
+key_lines = [
+    "-----BEGIN PRIVATE KEY-----",
+    "MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQD5yG3yG29SRHsP",
+    "YGJUb45E6xoJvdk/IpEANWreOicoTLi8aJOPwhRf7aPI7Pdknv4f3CnTq//jXqES",
+    "V2FOhZknPQb/O7QKetbYQx8hj6Q5sJwP0D1o1x2cAEzLRMUIhfGkhxFTvkV+4yJy",
+    "kfEvbs3jy8Y2k0VZ7esc/om7O58M6BFfeawLRLiNa+HHU1VoEE6ryDiEH06flLxK",
+    "CZU6D/sp1uR503LMKZkjHuj/ecilrBA1dKKcSDWWKka1AC3Gu3jTBWq9YDVB3uUI",
+    "91ih3GkjLCyRPa4jOMfPkPu2UuzikKeHbx8IxBiiY0OhgJ9Nv+ciX6n6+GYEEez/",
+    "s2P7pz1lAgMBAAECggEAdzZsFu12G3b4nrWbKH5Xkdf9ROH5ohLOzqEwAKETmD3J",
+    "u45TwvxXehMypM5IIptpYO5UfiRsi+lZiaXvmKjVmC8dvEoT2x6WlH+wh3WFZU0/",
+    "pqJ19Kgahx5ziF4phbBbzHD0WZoJlA42niS+Tiudk1dpohl2s32ERYHMXXKOrfrR",
+    "Exk/25TOZ3VhbXts2NEDNeFtJWMpLPRtf0pO5tcPrgICjmLZ5fq0eJBTE+/0THc/",
+    "WcuatHd3YDVujtYkv72eCv30b7L44V+cTIXCrkIDmYdbTfZhSDZ0e2WhTLbhul1a",
+    "R/OGyMPXUSnIqxXPYeFBdOCLz33VqfzwXp7OMRehPwKBgQD9FNQZ1DaNoDaAP9SW",
+    "1AVsF/sg127v0mC6aL3U8akKWVk8Mhrm18EEjCqBr+b0bqPgpy2dlU9bwBApqJcu",
+    "s44ZxveJTEV4b5rwBllBiauIwvzCuNALT0yFAYZYhf2+O7lZxeKOjOj/MphRlwWM",
+    "pYFJlp7Z2mjUfXJz6NpnlkeRUwKBgQD8qdzteE0WH5kvI2IQKfKRjzupR2tPBmIx",
+    "bSR/GqN6OVl9Rn50YngeglkD0DnbZtIzusK/1aed2baEjERuZ+/39Crsjh6PIee4",
+    "VDiRTDKtoI2HX2PGmPril76SpzlSklaOQo4oj/fkUrdj0LPDabjHdTRrA99xtLJq",
+    "0rfU98OHZwKBgQC5wdr4ZlnwU+MM+SyntKHLZRksHqsMx9Cy9+6BvmYgR6",
+    "4WvMEbF1ZQ4I5ViloS+LFbec6XkziooE/kfTxcWU4gWvo4M+n/pNb2YXSL9LkWkq",
+    "k/bfPUJFoXugcKfYK7Xh2a1++rzwTgAFvskJoWNRFc2SAc3LI+OC2rwG/wKBgQDZ",
+    "KAlZFId0l03qZMfYyqTQFEIb2OVS81Kb1omCsNuGphnTAS6YSzWgSznEfEft2W6a",
+    "xU6y4CgDFGa5f3ElTzHBc9scm32KWYK2O7SutMXt0ssxaXvw6fTfobpKg21SGbJI",
+    "7M0P8cUGOU2jfXGzZ39H9uVJgPef28Vo6JjVculbywKBgQCgY7vsQBxbJXoYpHUN",
+    "oAsuJOh0rf5W+q78QfF3i+WgHpViN3f1vT4UbivixUrEhGp37V2vyZa96lpVpaih",
+    "NEyhX41yRgtnhnoB7cVhwi0IgHb0X0M29IoMwySgomyIx0r/D1mi5Rndsr0DB+vh",
+    "BskD0tXj2itqXCC2HRM2t8Bzyg==",
+    "-----END PRIVATE KEY-----"
+]
+
+formatted_private_key = "\n".join(key_lines) + "\n"
 
 gcp_info = {
     "type": "service_account",
     "project_id": "rinse-france-ig-scheduler",
     "private_key_id": "914491679f4c7b1fd201b473df8945b6459f0019",
-    "private_key": RAW_PRIVATE_KEY,
+    "private_key": formatted_private_key,
     "client_email": "sheet-reader@rinse-france-ig-scheduler.iam.gserviceaccount.com",
     "client_id": "114718124634511508512",
     "auth_uri": "https://accounts.google.com/o/oauth2/auth",
