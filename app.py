@@ -6,6 +6,8 @@ import requests
 import ffmpeg
 import os
 import time
+import json
+import base64
 import cloudinary
 import cloudinary.uploader
 
@@ -26,24 +28,16 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Nouvelle clé GCP propre issue de rinse-france-ig-scheduler-74ce5b3fc750.json
-GCP_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQTY0FWlzSLzF2U\nnTFFvoFxB+F4YzHoJvs6Ctb0kBAJy5W55pgGVLTaPB1cun6G1DoQAb/Ti9uj122m\npuHM8KjxszThGfooiDQTHMt40rjqpCt6ec/x0Tolu\nnME+NwMLDB0pbEbZKdgvIWnK3qZ8pYjB2Ixe0SlCQabCviu3xhoK/Q0fmnladzEcx\nncedCVM52bCYKkZwWcMrK07G3AD0s8VYLYbgzOFXYUkLmGdR8k\naF6ETXXS1FmX9lO1r1GNCFXVGNkHRsXeBLnmNJ\nnt1Aw9KtDAgMBAAECggEAU710qpL4BiuLaTShqqZz20Miy5zjNrDDYotrPAU840Bg\nnJv5AlnITf2p+t8SfIGll5SYt46943kJ+zg2j8rhMP6I4BbmcW9v6is\nKL10ZPWhaxSmvDhmFhCodCrov6Yoq3/nMDdDV8h2qeYYt1IF9TzwW+bUP0/0+7wKiR4Y3knwvjy4iewpnC1NsbAgkjLLJNFF\nnBIhCpQaCn0+xi0ETd1cf29WminWrVswf6u9F1xlwcRuy1SdBQBSZyZ6QBn0v\nLl0xdazvFcGaDC8DNMdgpi59FQwnIgX0QkBgQDnJ30J3UfKiFAx7RdH\nnfVaWssInalbi5MwOutJVJ4X6NLRPYga8/n9zzQdJx2thXYAzfXJ9J4s1+u1qwp0+\n\nn2k+9L0cIb8Ydg7WTY+9nz5DlzKZCwJgB7NZFjv48bGbGFKaHtzCQ7J6nQ78ZZz6k\nn0Yh2FE2mRNhlZED+2qiGZFNY6wKbgQDAAVC5310J37EU65m3Nt+vx2Tjat28aqP\nneFa1u0rBRUCwld9WesLuKHSM7c0MK8D7Netw8XLgbCCbKDIQc21To3gvQaxp4BT3hLCDW2rwslDnex\nnvmzgAqdHCQKgBgwhyYANm2Ikf5Kw9bgB0RAYAvE9W+94osRGYCfs+hvFdcTcz7n\nnBJaxUeqi9t1QktoT0fm31KBmYjzj6ptoLU4RJ\nS0E8zhFEBk\nnaSTTh0X3iLFYwYMw6Aoyp7zRHdSdzE0R1oBdL2QachUW4KKvPQyJmFAoGBALO8\nnjvT2AFGl4QlXFK4GNwqX0bJo9U7XlR00p316nEYa8mST6NWLe7hfGs55VJrmMg7IH\nnJo2jA8R2ocSPhfpHiFi0yaum5wCiy0By7CDLmNwd\nnk8a7rR10SNUcqVa+NvPh0ue\n-----END PRIVATE KEY-----\n"
-
-gcp_info = {
-    "type": "service_account",
-    "project_id": "rinse-france-ig-scheduler",
-    "private_key_id": "74ce5b3fc750d7d8f8d3a11974eb900bc3cce0da",
-    "private_key": GCP_PRIVATE_KEY,
-    "client_email": "sheet-reader@rinse-france-ig-scheduler.iam.gserviceaccount.com",
-    "client_id": "114718124634511508512",
-    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-    "token_uri": "https://oauth2.googleapis.com/token",
-    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
-    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/sheet-reader%40rinse-france-ig-scheduler.iam.gserviceaccount.com",
-    "universe_domain": "googleapis.com"
-}
-
-creds = Credentials.from_service_account_info(gcp_info, scopes=SCOPES)
+# Load credentials safely from base64 secret
+if "GCP_JSON_B64" in st.secrets:
+    clean_b64 = st.secrets["GCP_JSON_B64"].replace("\n", "").replace("\r", "").replace(" ", "").strip()
+    json_bytes = base64.b64decode(clean_b64)
+    gcp_info = json.loads(json_bytes.decode("utf-8"))
+    if "private_key" in gcp_info:
+        gcp_info["private_key"] = gcp_info["private_key"].replace("\\n", "\n")
+    creds = Credentials.from_service_account_info(gcp_info, scopes=SCOPES)
+else:
+    st.error("Missing GCP_JSON_B64 in Streamlit Secrets!")
 
 def get_sheet_data(sheet_url, row_number):
     try:
