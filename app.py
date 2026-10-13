@@ -85,8 +85,31 @@ def process_video(input_filename, output_filename, crop):
     except Exception as e:
         return f"Error: {e}"
 
+def attendre_traitement_conteneurs(container_ids, access_token, max_retries=20, delay=10):
+    """
+    Interroge l'API Graph Meta pour vérifier le statut de chaque conteneur vidéo.
+    Bloque l'exécution jusqu'à ce que tous les conteneurs soient au statut 'FINISHED'.
+    """
+    for index, c_id in enumerate(container_ids, start=1):
+        status = "IN_PROGRESS"
+        retries = 0
+        status_placeholder = st.empty()
+        
+        while status == "IN_PROGRESS" and retries < max_retries:
+            time.sleep(delay)
+            url = f"https://graph.facebook.com/v20.0/{c_id}?fields=status_code&access_token={access_token}"
+            res = requests.get(url).json()
+            status = res.get("status_code", "ERROR")
+            retries += 1
+            status_placeholder.write(f"Vérification vidéo {index}/{len(container_ids)} : statut {status} (essai {retries}/{max_retries})")
+
+        if status != "FINISHED":
+            raise Exception(f"Le conteneur vidéo {c_id} n'a pas pu être traité par Meta (statut: {status}).")
+        status_placeholder.write(f"✅ Vidéo {index}/{len(container_ids)} prête !")
+
 def publish_now_to_instagram(cloudinary_urls, caption):
     container_ids = []
+    # 1. Création des conteneurs
     for index, url_val in enumerate(cloudinary_urls):
         st.write(f"Création du conteneur vidéo {index + 1}/{len(cloudinary_urls)} sur Instagram...")
         url = f"https://graph.facebook.com/v26.0/{INSTAGRAM_ACCOUNT_ID}/media"
@@ -102,9 +125,14 @@ def publish_now_to_instagram(cloudinary_urls, caption):
         else:
             return False, f"Erreur Création Conteneur Vidéo : {r}"
             
-    st.write("Attente du traitement vidéo par les serveurs Meta (15 secondes)...")
-    time.sleep(15)
+    # 2. Attente active du traitement Meta
+    st.write("⏳ Attente du traitement et de l'encodage par les serveurs Meta...")
+    try:
+        attendre_traitement_conteneurs(container_ids, ACCESS_TOKEN)
+    except Exception as e:
+        return False, str(e)
     
+    # 3. Assemblage du carrousel
     st.write("Création du carrousel principal...")
     url = f"https://graph.facebook.com/v26.0/{INSTAGRAM_ACCOUNT_ID}/media"
     payload = {
@@ -118,9 +146,10 @@ def publish_now_to_instagram(cloudinary_urls, caption):
         return False, f"Erreur Création Carrousel : {r}"
         
     carousel_id = r['id']
-    time.sleep(5)
+    time.sleep(5) # Petite pause pour s'assurer que le carrousel est bien propagé
     
-    st.write("Publication en cours sur le compte Instagram Rinse France...")
+    # 4. Publication
+    st.write("🚀 Publication en cours sur le compte Instagram Rinse France...")
     pub_url = f"https://graph.facebook.com/v26.0/{INSTAGRAM_ACCOUNT_ID}/media_publish"
     pub_payload = {
         'creation_id': carousel_id,
