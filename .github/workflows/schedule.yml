@@ -2,9 +2,8 @@ name: Instagram Scheduler
 
 on:
   schedule:
-    # Exécution automatique toutes les heures (ex: 10h, 11h, 12h, ..., 17h)
     - cron: "0 * * * *"
-  workflow_dispatch: # Permet de déclencher un test manuel depuis GitHub sans attendre l'heure pile
+  workflow_dispatch:
 
 jobs:
   publish:
@@ -24,11 +23,11 @@ jobs:
           pip install requests gspread google-auth pytz toml
 
       - name: Injection des secrets Streamlit
-        env:
-          SECRETS_CONTENT: ${{ secrets.STREAMLIT_SECRETS }}
         run: |
           mkdir -p .streamlit
-          echo "$SECRETS_CONTENT" > .streamlit/secrets.toml
+          cat << 'EOF' > .streamlit/secrets.toml
+          ${{ secrets.STREAMLIT_SECRETS }}
+          EOF
 
       - name: Exécution du script de publication
         run: python auto_publish.py
