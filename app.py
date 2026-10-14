@@ -78,7 +78,8 @@ def process_video(input_filename, output_filename, crop):
             acodec='aac', 
             audio_bitrate='192k', 
             ar='44100', 
-            ac=2
+            ac=2,
+            t='59.5' # Sécurité : coupe à 59.5 secondes maximum pour Instagram
         )
         ffmpeg.run(output, overwrite_output=True, quiet=True)
         return "Success"
