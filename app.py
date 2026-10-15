@@ -74,7 +74,9 @@ def process_video(input_filename, output_filename, crop):
             video, 
             audio, 
             output_filename, 
-            vcodec='libx264', 
+            vcodec='libx264',
+            preset='ultrafast',  # <-- NOUVEAU : Accélère drastiquement l'encodage et réduit la charge CPU
+            threads=1,           # <-- NOUVEAU : Empêche le serveur d'exploser sa RAM
             acodec='aac', 
             audio_bitrate='192k', 
             ar='44100', 
