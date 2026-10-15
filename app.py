@@ -205,26 +205,41 @@ if st.button("Récupérer et traiter la ligne"):
         processed_files = []
         cloudinary_urls = []
         for index, url in enumerate(video_urls):
+            # --- SUPPORT UNIVERSEL DES LIENS DRIVE ---
             try:
-                file_id = url.split("id=")[1]
-            except IndexError:
+                if "id=" in url:
+                    file_id = url.split("id=")[1].split("&")[0]
+                elif "/file/d/" in url:
+                    file_id = url.split("/file/d/")[1].split("/")[0]
+                else:
+                    st.warning(f"Lien vidéo ignoré (format non reconnu) : {url}")
+                    continue
+            except Exception:
                 continue
+            # ----------------------------------------
                 
             temp_dl = f"temp_download_{index}.mp4"
             final_vid = f"final_video_{index}.mp4"
-            dl_status = download_drive_video(file_id, temp_dl)
             
-            if dl_status == "Success":
-                process_status = process_video(temp_dl, final_vid, should_crop)
-                if process_status == "Success":
-                    st.video(final_vid)
-                    processed_files.append(final_vid)
-                    
-                    upload_result = cloudinary.uploader.upload(final_vid, resource_type="video")
-                    cloudinary_urls.append(upload_result.get("secure_url"))
-                    
-                    if os.path.exists(temp_dl):
-                        os.remove(temp_dl)
+            with st.spinner(f"Traitement de la vidéo {index + 1}/{len(video_urls)} en cours..."):
+                dl_status = download_drive_video(file_id, temp_dl)
+                
+                if dl_status == "Success":
+                    process_status = process_video(temp_dl, final_vid, should_crop)
+                    if process_status == "Success":
+                        # Optimisation mémoire: Remplacement de l'affichage vidéo par un message texte
+                        st.success(f"✅ Vidéo {index + 1} recadrée et hébergée !")
+                        
+                        processed_files.append(final_vid)
+                        
+                        upload_result = cloudinary.uploader.upload(final_vid, resource_type="video")
+                        cloudinary_urls.append(upload_result.get("secure_url"))
+                        
+                        # Optimisation mémoire: Suppression immédiate des fichiers locaux
+                        if os.path.exists(temp_dl):
+                            os.remove(temp_dl)
+                        if os.path.exists(final_vid):
+                            os.remove(final_vid)
         
         st.session_state['processed_files'] = processed_files
         st.session_state['cloudinary_urls'] = cloudinary_urls
