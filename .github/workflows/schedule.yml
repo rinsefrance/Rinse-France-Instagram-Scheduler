@@ -30,4 +30,4 @@ jobs:
           EOF
 
       - name: Exécution du script de publication
-        run: python auto_publish.py
+        run: python publish_cron.py
