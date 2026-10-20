@@ -4,3 +4,4 @@ google-auth
 requests
 ffmpeg-python
 cloudinary
+google-generativeai
