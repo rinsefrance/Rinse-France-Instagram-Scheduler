@@ -6,7 +6,7 @@ from google.oauth2.service_account import Credentials
 import json
 from datetime import datetime
 import pytz
-import toml # Ajout pour lire les secrets Streamlit
+import toml 
 
 # --- LECTURE DES SECRETS DEPUIS LE FICHIER TOML ---
 secrets_path = ".streamlit/secrets.toml"
@@ -84,8 +84,9 @@ if SHEET_URL:
                     print(f"Error container: {r}")
             
             if container_ids:
-                print("Attente de l'encodage Meta (30s)...")
-                time.sleep(30)
+                print("Attente de l'encodage Meta (180s pour 10 vidéos)...")
+                time.sleep(180) # <-- 3 minutes d'attente
+                
                 url = f"https://graph.facebook.com/v26.0/{INSTAGRAM_ACCOUNT_ID}/media"
                 payload = {
                     'media_type': 'CAROUSEL',
@@ -97,11 +98,14 @@ if SHEET_URL:
                 
                 if 'id' in r:
                     carousel_id = r['id']
-                    print("Attente validation finale carrousel (20s)...")
-                    time.sleep(20)
+                    print("Attente validation finale carrousel (120s)...")
+                    time.sleep(120) # <-- 2 minutes d'attente
+                    
                     pub_url = f"https://graph.facebook.com/v26.0/{INSTAGRAM_ACCOUNT_ID}/media_publish"
                     pub_r = requests.post(pub_url, data={'creation_id': carousel_id, 'access_token': ACCESS_TOKEN}).json()
                     
                     if 'id' in pub_r:
                         print(f"Ligne {row_idx} publiée avec succès !")
-                        sheet.update_cell(row_idx, 13, "Publié") # <-- La coquille est corrigée ici
+                        sheet.update_cell(row_idx, 13, "Publié")
+                    else:
+                        print(f"ERREUR META LORS DE LA PUBLICATION : {pub_r}")
