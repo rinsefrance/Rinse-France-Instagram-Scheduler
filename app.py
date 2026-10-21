@@ -151,7 +151,7 @@ def publish_now_to_instagram(cloudinary_urls, caption):
     if 'id' in pub_r: return True, pub_r['id']
     else: return False, f"Erreur Publication : {pub_r}"
 
-# --- FONCTION IA GEMINI CORRIGÉE ---
+# --- FONCTION IA GEMINI AUTO-DÉTECTRICE ---
 def generate_insta_captions(raw_text, artist_name):
     prompt = f"""Tu es le CM de Rinse France.
 Génère 3 variations de caption Instagram pour un post collaboratif avec l'artiste.
@@ -171,12 +171,23 @@ Réponds au format JSON strict :
 {{
   "opt1": "Variation 1 (Clean & Fidèle)",
   "opt2": "Variation 2 (Focus Invités / Énergie)",
-  "opt3": "Variation 3 (Formaté aérés / Tracklist)"
+  "opt3": "Variation 3 (Formaté aéré / Tracklist)"
 }}
 """
-    # Liste de modèles avec repli automatique
-    models_to_try = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-pro']
-    
+    # Détection dynamique des modèles valides sur la clé API
+    models_to_try = []
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                models_to_try.append(m.name)
+    except Exception:
+        pass
+
+    # S'il ne trouve rien dynamiquement, on utilise les identifiants standards
+    if not models_to_try:
+        models_to_try = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+
+    last_error = ""
     for model_name in models_to_try:
         try:
             model = genai.GenerativeModel(model_name)
@@ -192,7 +203,7 @@ Réponds au format JSON strict :
         except Exception as e:
             last_error = str(e)
             continue
-            
+
     return {"opt1": f"Erreur IA: {last_error}", "opt2": "", "opt3": ""}
 
 
