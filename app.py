@@ -151,7 +151,7 @@ def publish_now_to_instagram(cloudinary_urls, caption):
     if 'id' in pub_r: return True, pub_r['id']
     else: return False, f"Erreur Publication : {pub_r}"
 
-# --- FONCTION IA GEMINI ---
+# --- FONCTION IA GEMINI CORRIGÉE ---
 def generate_insta_captions(raw_text, artist_name):
     prompt = f"""Tu es le CM de Rinse France.
 Génère 3 variations de caption Instagram pour un post collaboratif avec l'artiste.
@@ -171,22 +171,29 @@ Réponds au format JSON strict :
 {{
   "opt1": "Variation 1 (Clean & Fidèle)",
   "opt2": "Variation 2 (Focus Invités / Énergie)",
-  "opt3": "Variation 3 (Formaté aéré / Tracklist)"
+  "opt3": "Variation 3 (Formaté aérés / Tracklist)"
 }}
 """
-    try:
-        model = genai.GenerativeModel('gemini-2.5-flash')
-        response = model.generate_content(prompt)
-        import json
-        import re
-        text = response.text
-        match = re.search(r'\{[\s\S]*\}', text)
-        if match:
-            clean_json = match.group(0)
-            return json.loads(clean_json)
-        return {"opt1": text, "opt2": "Erreur de formatage", "opt3": "Erreur de formatage"}
-    except Exception as e:
-        return {"opt1": f"Erreur IA: {e}", "opt2": "", "opt3": ""}
+    # Liste de modèles avec repli automatique
+    models_to_try = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-pro']
+    
+    for model_name in models_to_try:
+        try:
+            model = genai.GenerativeModel(model_name)
+            response = model.generate_content(prompt)
+            import json
+            import re
+            text = response.text
+            match = re.search(r'\{[\s\S]*\}', text)
+            if match:
+                clean_json = match.group(0)
+                return json.loads(clean_json)
+            return {"opt1": text, "opt2": "Erreur de formatage", "opt3": "Erreur de formatage"}
+        except Exception as e:
+            last_error = str(e)
+            continue
+            
+    return {"opt1": f"Erreur IA: {last_error}", "opt2": "", "opt3": ""}
 
 
 # --- INTERFACE UTILISATEUR (UI) & STYLES ---
